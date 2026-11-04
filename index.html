@@ -485,7 +485,10 @@ function setReminderStatus(message,error=false){
 }
 function reminderSetupError(error){
   const message=error&&error.message?error.message:String(error);
-  if(/firebaseinstallations\.googleapis\.com|installations\/request-failed|PERMISSION_DENIED/i.test(message)){
+  if(error&&error.code==='PERMISSION_DENIED'){
+    return 'Firebase Realtime Database denied access to reminder data. Confirm you are signed in, then deploy database.rules.json to the same Firebase project. The rules must allow the signed-in user to read and write workout_planner_reminder_users/{their UID}. Firebase says: '+message;
+  }
+  if(/firebaseinstallations\.googleapis\.com|installations\/request-failed/i.test(message)){
     const code=error&&error.code?String(error.code):'unknown';
     const response=error&&error.customData&&error.customData.serverResponse
       ?String(error.customData.serverResponse):message;
