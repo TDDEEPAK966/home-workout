@@ -57,24 +57,7 @@ function getAddedActivityNames(value) {
     .filter(Boolean);
 }
 
-async function sendDueReminder(userId, settings, now, database, messaging) {
-  if (!settings || settings.enabled !== true) return;
-  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(settings.time || '')) {
-    console.warn(`Skipping user ${userId}: invalid reminder time.`);
-    return;
-  }
-
-  const timeZone = typeof settings.timeZone === 'string' ? settings.timeZone : 'UTC';
-  let local;
-  try {
-    local = getLocalDateTime(now, timeZone);
-  } catch (error) {
-    console.warn(`Skipping user ${userId}: invalid time zone "${timeZone}".`);
-    return;
-  }
-
-  if (local.time < settings.time || settings.lastSentDate === local.date) return;
-
+async function sendPush(userId, settings, title, body, database, messaging) {
   const tokens = Object.keys(settings.tokens || {});
   if (!tokens.length) return;
 
@@ -86,14 +69,6 @@ async function sendDueReminder(userId, settings, now, database, messaging) {
     return;
   }
 
-  const customSnapshot = await database
-    .ref(`users/${userId}/workout_planner_data/logs/${local.date}/custom`)
-    .once('value');
-  const activityNames = getAddedActivityNames(customSnapshot.val());
-  const body = activityNames.length
-    ? `Your daily exercise workout starts now. Today's added activities: ${activityNames.join(', ')}.`
-    : 'Your daily exercise workout starts now.';
-  const messageBody = body.slice(0, 3500);
   let successCount = 0;
   const invalidTokens = [];
 
@@ -102,8 +77,8 @@ async function sendDueReminder(userId, settings, now, database, messaging) {
     const result = await messaging.sendEachForMulticast({
       tokens: batch,
       data: {
-        title: 'Workout time',
-        body: messageBody,
+        title,
+        body: body.slice(0, 3500),
         url: siteUrl
       },
       webpush: {
@@ -128,11 +103,92 @@ async function sendDueReminder(userId, settings, now, database, messaging) {
     await database.ref(`${REMINDERS_PATH}/${userId}`).update(cleanup);
   }
   if (!successCount) {
-    throw new Error(`Firebase rejected all notifications for user ${userId}; will retry on the next run.`);
+    throw new Error(`Firebase rejected all "${title}" notifications for user ${userId}; will retry on the next run.`);
   }
 
-  await database.ref(`${REMINDERS_PATH}/${userId}/lastSentDate`).set(local.date);
-  console.log(`Sent workout reminder for ${userId} (${local.date}); delivered to ${successCount} device(s).`);
+  return successCount;
+}
+
+async function sendDueReminder(userId, settings, now, database, messaging) {
+  if (!settings || settings.enabled !== true) return;
+
+  const timeZone = typeof settings.timeZone === 'string' ? settings.timeZone : 'UTC';
+  let local;
+  try {
+    local = getLocalDateTime(now, timeZone);
+  } catch (error) {
+    console.warn(`Skipping user ${userId}: invalid time zone "${timeZone}".`);
+    return;
+  }
+
+  const deliveryErrors = [];
+  if (/^([01]\d|2[0-3]):[0-5]\d$/.test(settings.time || '')
+      && local.time >= settings.time && settings.lastSentDate !== local.date) {
+    try {
+      const customSnapshot = await database
+        .ref(`users/${userId}/workout_planner_data/logs/${local.date}/custom`)
+        .once('value');
+      const activityNames = getAddedActivityNames(customSnapshot.val());
+      const body = activityNames.length
+        ? `Your daily exercise workout starts now. Today's added activities: ${activityNames.join(', ')}.`
+        : 'Your daily exercise workout starts now.';
+      const successCount = await sendPush(userId, settings, 'Workout time', body, database, messaging);
+      if (successCount) {
+        await database.ref(`${REMINDERS_PATH}/${userId}/lastSentDate`).set(local.date);
+        console.log(`Sent workout reminder for ${userId} (${local.date}); delivered to ${successCount} device(s).`);
+      }
+    } catch (error) {
+      deliveryErrors.push(error.message);
+    }
+  }
+
+  const customSnapshot = await database
+    .ref(`users/${userId}/workout_planner_data/logs/${local.date}/custom`)
+    .once('value');
+  const customItems = customSnapshot.val();
+  const sentHistoryRef = database.ref(`${REMINDERS_PATH}/${userId}/slotLastSent`);
+  const sentHistorySnapshot = await sentHistoryRef.once('value');
+  const sentHistory = sentHistorySnapshot.val();
+  if (sentHistory && typeof sentHistory === 'object') {
+    const expiredDates = {};
+    Object.keys(sentHistory).forEach(date => {
+      if (date !== local.date) expiredDates[date] = null;
+    });
+    if (Object.keys(expiredDates).length) await sentHistoryRef.update(expiredDates);
+  }
+  if (!customItems || typeof customItems !== 'object') return;
+
+  for (const slot of Object.values(customItems)) {
+    if (!slot || slot.reminderEnabled !== true
+        || !/^([01]\d|2[0-3]):[0-5]\d$/.test(slot.reminderTime || '')
+        || typeof slot.reminderId !== 'string'
+        || !/^[A-Za-z0-9_-]{1,80}$/.test(slot.reminderId)
+        || local.time < slot.reminderTime) continue;
+
+    const sentRef = database.ref(`${REMINDERS_PATH}/${userId}/slotLastSent/${local.date}/${slot.reminderId}`);
+    const sentSnapshot = await sentRef.once('value');
+    if (sentSnapshot.val() === true) continue;
+
+    const name = typeof slot.name === 'string' && slot.name.trim() ? slot.name.trim() : 'Custom activity';
+    const detail = typeof slot.detail === 'string' && slot.detail.trim() ? ` (${slot.detail.trim()})` : '';
+    try {
+      const successCount = await sendPush(
+        userId,
+        settings,
+        'Activity reminder',
+        `${name}${detail} starts now.`,
+        database,
+        messaging
+      );
+      if (successCount) {
+        await sentRef.set(true);
+        console.log(`Sent custom activity reminder for ${userId} (${local.date}); delivered to ${successCount} device(s).`);
+      }
+    } catch (error) {
+      deliveryErrors.push(error.message);
+    }
+  }
+  if (deliveryErrors.length) throw new Error(deliveryErrors.join('; '));
 }
 
 async function main() {
