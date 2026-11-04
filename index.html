@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#10251d">
+<title>Home Workout Planner</title>
+<!-- Site Icon (Favicon) -->
+<link rel="icon" type="image/png" href="logo.png?v=2">
+
+<!-- Firebase SDKs for Cloud Sync & Login -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js"></script>
+<style>
+:root{--bg:#f4f7f4;--card:#fff;--ink:#17251f;--muted:#66756d;--green:#176b4d;--green2:#dff3e8;--line:#e1e9e3;--orange:#f1a85b;--shadow:0 8px 26px rgba(18,52,36,.07)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}button,input{font:inherit}button{cursor:pointer}.wrap{max-width:1000px;margin:auto;padding:18px}.stack{display:flex;flex-direction:column;gap:16px;margin:16px auto;max-width:800px}.hero{background:linear-gradient(135deg,#10251d,#176b4d);color:white;border-radius:24px;padding:26px;box-shadow:var(--shadow)}.eyebrow{font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;opacity:.78;font-weight:800}.title-area{display:flex;align-items:center;gap:16px;margin:12px 0 8px}.title-area img{height:64px;width:64px;border-radius:14px;box-shadow:0 4px 12px rgba(0,0,0,.25);object-fit:cover;background:#fff}.hero h1{font-size:clamp(1.8rem,5vw,2.7rem);line-height:1.08;margin:0}.hero p{max-width:620px;color:#d9ebe1;margin:10px 0 0}.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.chip{background:#ffffff1c;border:1px solid #ffffff35;border-radius:999px;padding:7px 11px;font-size:.88rem}.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:18px;box-shadow:var(--shadow);min-width:0}.card h2{font-size:1.15rem;margin:0 0 12px}.muted{color:var(--muted)}.calendar-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}.month-title{font-weight:800;font-size:1.1rem}.navbtn,.secondary{border:1px solid var(--line);background:#fff;border-radius:12px;padding:8px 12px;color:var(--ink)}.weekdays,.days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}.weekdays div{text-align:center;color:var(--muted);font-size:.76rem;font-weight:700;padding:5px 0}.day{min-height:48px;border:1px solid transparent;background:#f5f8f5;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;color:var(--ink);padding:4px}.day .num{font-size:.9rem}.day .dot{font-size:.65rem;line-height:1;color:var(--green);min-height:9px}.day.workout-day{background:#eaf5ee}.day.selected{outline:2px solid var(--green);border-color:var(--green);background:#dff3e8}.day.complete .num{font-weight:900}.day.complete .dot{color:#176b4d}.day.today .num{text-decoration:underline;text-underline-offset:3px}.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:.78rem;color:var(--muted);margin-top:12px}.legend span{display:flex;align-items:center;gap:5px}.swatch{width:10px;height:10px;border-radius:3px;display:inline-block;background:#eaf5ee}.swatch.done{background:var(--green)}
+.date-switcher{display:flex;align-items:center;justify-content:space-between;background:#f9fbf9;border:1px solid var(--line);border-radius:16px;padding:12px 16px;margin-bottom:16px}.date-switcher button{background:#fff;border:1px solid var(--line);border-radius:10px;font-size:1.5rem;cursor:pointer;padding:4px 16px;color:var(--ink);transition:.2s;box-shadow:0 2px 5px rgba(0,0,0,.04)}.date-switcher button:hover{background:var(--green);color:#fff;border-color:var(--green)}.date-switcher .center-text{text-align:center}.date-switcher .selected-date{font-size:1.15rem;font-weight:800;color:var(--ink)}.date-switcher .session-label{color:var(--green);font-weight:750;font-size:.85rem;margin-top:2px}
+.exercise-list{display:grid;gap:8px;margin-top:12px}.exercise{display:flex;gap:11px;align-items:flex-start;padding:11px;border:1px solid var(--line);border-radius:13px;background:#fff;position:relative;flex-wrap:wrap}.exercise input[type="checkbox"]{width:20px;height:20px;accent-color:var(--green);margin-top:2px;flex-shrink:0}.exercise.done{background:#f0f8f3}.exercise.done .ex-name{text-decoration:line-through;color:var(--muted)}.ex-name{font-weight:750}.ex-detail{font-size:.87rem;color:var(--muted);margin-top:2px}.video-link{display:inline-flex;align-items:center;margin-top:6px;font-size:.8rem;color:var(--green);text-decoration:none;font-weight:750;background:#eaf5ee;padding:4px 8px;border-radius:6px}.video-link:hover{background:#dff3e8}.progress-row{display:flex;justify-content:space-between;gap:10px;font-size:.85rem;margin:14px 0 6px}.bar{height:8px;background:#e9eee9;border-radius:999px;overflow:hidden}.bar-fill{height:100%;width:0;background:var(--green);transition:width .2s}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.primary{background:var(--green);color:white;border:0;border-radius:12px;padding:10px 14px;font-weight:750}.secondary{font-weight:650}.btn-sm{padding:6px 10px;font-size:.8rem}.schedule{display:grid;gap:8px}.schedule-row{display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line);padding:8px 0}.schedule-row:last-child{border-bottom:0}.dayname{width:46px;font-weight:800}.tag{margin-left:auto;font-size:.75rem;border-radius:999px;padding:4px 8px;background:#eef2ee;color:#59665e}.tag.strength{background:#dff3e8;color:#176b4d}.tips{padding-left:19px;margin:8px 0;color:var(--muted)}.tips li{margin:7px 0}.small{font-size:.83rem}.footer{color:var(--muted);font-size:.78rem;text-align:center;padding:20px 5px 10px}.notice{border-radius:12px;padding:10px 12px;background:#fff4e6;color:#7a4c13;font-size:.85rem;margin-top:12px}.settings{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.settings input{border:1px solid var(--line);border-radius:10px;padding:8px;width:145px}
+.adder{display:flex;gap:8px;margin-top:12px;background:#f9fbf9;padding:12px;border-radius:13px;border:1px dashed var(--line)}.adder input{border:1px solid var(--line);border-radius:8px;padding:8px;font-size:.85rem}.adder input.a-name{flex:1;min-width:0}.adder input.a-det{width:90px}.icon-btn{background:transparent;border:0;font-size:1.1rem;cursor:pointer;opacity:.6;padding:2px 6px;transition:.2s;line-height:1}.icon-btn:hover{opacity:1;color:var(--ink)}.del-btn:hover{color:#e64a19}
+.edit-box{flex-basis:100%;display:none;flex-direction:column;gap:6px;background:#f9fbf9;padding:10px;border-radius:10px;margin-top:8px;border:1px dashed var(--line)}
+.edit-box.open{display:flex}
+.edit-box input{border:1px solid var(--line);padding:6px;border-radius:6px;font-size:.85rem}.reminder-time-input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.sync-status{font-size:.8rem;font-weight:700;padding:5px 12px;border-radius:999px;display:inline-flex;align-items:center;gap:5px;background:#ffffff22;color:#fff;border:1px solid #ffffff44;transition:background .2s}
+.sync-status:hover{background:#ffffff33}
+@media(max-width:700px){.wrap{padding:12px}.grid{grid-template-columns:1fr}.hero{padding:21px;border-radius:20px}.title-area img{height:52px;width:52px}.card{padding:15px}.day{min-height:43px;border-radius:10px}.day .num{font-size:.84rem}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+ <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+   <div class="eyebrow">Your personal training tracker</div>
+   <div class="sync-status" id="syncBadge">🔑 Sign in to Sync</div>
+ </div>
+ <div class="title-area">
+   <div style="display: flex; align-items: center; gap: 18px; margin-bottom: 12px;">
+    <!-- Increased height to 75px and added a subtle shadow for a premium look -->
+    <img src="logo.png" alt="Logo" style="height: 75px; width: auto; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
+    <h1 style="margin: 0;">Deepak's Workout and Activity Planner</h1>
+ </div>
+ <p>Build strength, stay consistent and fit training around CA Inter and DU.</p>
+ <div class="chips"><span class="chip">🏋️ 3 days/week</span><span class="chip">⏱ 30–40 min</span><span class="chip">🏠 2.5 kg + 5 kg dumbbells</span><span class="chip">🔄 Multi-Device Cloud Sync</span></div>
+</header>
+
+<div class="stack">
+<section class="card">
+ <div style="display:flex; justify-content:space-between; align-items:center;">
+   <h2 style="margin:0;">Calendar</h2>
+   <button class="secondary" id="toggleCalBtn" style="font-size:0.85rem; padding:6px 12px;">📅 Show Calendar</button>
+ </div>
+ 
+ <div id="calendarWrapper" hidden style="margin-top:14px;">
+   <div class="calendar-head"><button class="navbtn" id="prev" aria-label="Previous month">‹</button><div class="month-title" id="monthTitle"></div><button class="navbtn" id="next" aria-label="Next month">›</button></div>
+   <div class="weekdays"><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div></div>
+   <div class="days" id="calendar"></div>
+   <div class="legend" style="margin-bottom:12px;"><span><i class="swatch"></i> Planned workout</span><span><i class="swatch done"></i> Completed</span><span>Underline = today</span></div>
+ </div>
+ 
+ <div class="actions" style="margin-top:14px;"><button class="secondary" id="todayBtn">Go to today</button><button class="secondary" id="exportBtn">Export backup</button><button class="secondary" id="importBtn">Import backup</button><button class="secondary" id="reminderTimeBtn" type="button" aria-label="Set daily reminder time">🕖 7:00 AM</button><input id="reminderTimeInput" class="reminder-time-input" type="time" value="07:00" tabindex="-1" aria-hidden="true"><button class="secondary" id="reminderToggleBtn" type="button" aria-pressed="true">Enable reminders</button><input id="importFile" type="file" accept="application/json" hidden></div>
+ <p class="muted small">Daily workout reminder uses your device's local time. Sign in, enable reminders, and allow browser notifications to receive it when the site is closed.</p>
+</section>
+
+<section class="card">
+ <div class="date-switcher">
+   <button id="prevDateBtn" aria-label="Previous day">‹</button>
+   <div class="center-text">
+     <div class="selected-date" id="selectedDate"></div>
+     <div class="session-label" id="sessionLabel"></div>
+   </div>
+   <button id="nextDateBtn" aria-label="Next day">›</button>
+ </div>
+ 
+ <p class="muted small" id="sessionIntro" style="margin-top:4px;">Choose a date on the calendar.</p>
+ <div class="progress-row"><span>Session progress</span><strong id="progressText">0 / 0</strong></div>
+ <div class="bar"><div class="bar-fill" id="progressBar"></div></div>
+ <div class="exercise-list" id="exerciseList"></div>
+ <div class="actions"><button class="primary" id="completeBtn">Mark session complete</button><button class="secondary" id="clearBtn">Clear ticks</button></div>
+ <div class="notice" id="restNotice" hidden>Recovery day. Rest, or add a light activity like a walk below.</div>
+</section>
+</div>
+
+<div class="grid">
+<section class="card">
+ <h2>Weekly schedule</h2>
+ <div class="schedule">
+  <div class="schedule-row"><span class="dayname">Mon</span><span>Workout A — Full body</span><span class="tag strength">Strength</span></div>
+  <div class="schedule-row"><span class="dayname">Tue</span><span>College / recovery</span><span class="tag">Rest</span></div>
+  <div class="schedule-row"><span class="dayname">Wed</span><span>Workout B — Full body</span><span class="tag strength">Strength</span></div>
+  <div class="schedule-row"><span class="dayname">Thu</span><span>Easy walk or rest</span><span class="tag">Recovery</span></div>
+  <div class="schedule-row"><span class="dayname">Fri</span><span>College / recovery</span><span class="tag">Rest</span></div>
+  <div class="schedule-row"><span class="dayname">Sat</span><span>Workout A / alternate A and B weekly</span><span class="tag strength">Strength</span></div>
+  <div class="schedule-row"><span class="dayname">Sun</span><span>Rest and CA revision</span><span class="tag">Recovery</span></div>
+ </div>
+ <p class="muted small">Alternate the Saturday/Monday pattern each week: Week 1 A/B/A, Week 2 B/A/B.</p>
+</section>
+<section class="card">
+ <h2>Beginner reminders</h2>
+ <ul class="tips">
+  <li>Warm up for 4–5 minutes before training.</li>
+  <li>Start with 2 sets per exercise for the first two weeks.</li>
+  <li>Rest 60–120 seconds between sets.</li>
+  <li>Finish most sets feeling you could do 2–3 more good reps.</li>
+  <li>Prioritise regular meals, protein and 7–9 hours of sleep.</li>
+  <li>Stop if an exercise causes sharp pain.</li>
+ </ul>
+ <div class="settings"><label for="startDate" class="small">Plan start date</label><input type="date" id="startDate"><button class="secondary" id="saveStart">Save</button></div>
+ <p class="muted small">The start date is used to alternate Workout A and B weekly. The calendar itself can be used for any date.</p>
+</section>
+</div>
+<div class="footer">Offline-friendly single-file planner · Progress is stored locally with optional Firebase Google account backup.</div>
+</div>
+<script>
+// ==================== FIREBASE CONFIGURATION ====================
+let db = null; let dbRef = null; let auth = null; let currentUser = null;
+let authPersistenceReady = Promise.resolve(false);
+let messaging = null;
+let foregroundMessageHandlerRegistered = false;
+const FCM_VAPID_KEY = 'BB2UQ4LeFsl5SQRvwpX2yiEcNgq6xEfwFEMJdlU0ie181CMJnhIpnq5e18j2DoA_im_v2cIecTN_sdLNtxjysAU';
+const firebaseConfig = {
+  apiKey: "AIzaSyBDXjoAZMgVu3SoqK913Ub4_qS_kmLVSvQ",
+  authDomain: "home-workout-planner-4e10f.firebaseapp.com",
+  databaseURL: "https://home-workout-planner-4e10f-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "home-workout-planner-4e10f",
+  storageBucket: "home-workout-planner-4e10f.firebasestorage.app",
+  messagingSenderId: "588693721178",
+  appId: "1:588693721178:web:3b532282fd027d52a98863",
+  measurementId: "G-B1XCF5G27Q"
+};
+
+try {
+  if (typeof firebase !== 'undefined') {
+    firebase.initializeApp(firebaseConfig); 
+    db = firebase.database(); 
+    auth = firebase.auth();
+    try { if (typeof firebase.messaging === 'function') messaging = firebase.messaging(); }
+    catch (err) { console.warn("Firebase Messaging is unavailable in this browser:", err); }
+    
+    // Wait for durable persistence setup before starting auth-state restoration.
+    authPersistenceReady = auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).then(() => true).catch((err) => {
+      console.warn("Auth persistence error:", err);
+      return false;
+    });
+    authPersistenceReady.then(() => {
+      auth.onAuthStateChanged((user) => {
+      const badge = document.getElementById("syncBadge");
+      if (!badge) return;
+      if (user) {
+        currentUser = user;
+        const name = user.displayName ? user.displayName.split(" ")[0] : "User";
+        badge.textContent = "🟢 " + name + " (Logout)"; 
+        badge.title = "Click to Sign Out"; 
+        badge.style.cursor = "pointer";
+        badge.onclick = () => auth.signOut();
+        
+        dbRef = db.ref("users/" + user.uid + "/workout_planner_data");
+        dbRef.on("value", (snapshot) => {
+          const val = snapshot.val();
+          if (val && val.logs) { data = val; localStorage.setItem(STORE, JSON.stringify(data)); renderAll(); }
+        });
+        loadReminderSettings(user);
+        updateReminderControls();
+      } else {
+        currentUser = null; dbRef = null; badge.textContent = "🔑 Sign in to Sync"; badge.title = "Click to Sign In with Google"; badge.style.cursor = "pointer";
+        updateReminderControls();
+        badge.onclick = async () => {
+          if (window.location.protocol === 'file:') { alert("⚠️ Google Sign-In requires your app to be hosted online (e.g. Netlify). Direct local file opening (file://) is restricted by Google Auth security."); return; }
+          if (!await authPersistenceReady) {
+            alert("Could not enable persistent sign-in in this browser. Check that site data is allowed, then reload and try again.");
+            return;
+          }
+          const provider = new firebase.auth.GoogleAuthProvider(); 
+          auth.signInWithPopup(provider).catch(err => alert("Sign-In Error: " + err.message));
+        };
+      }
+      }, (err) => {
+        console.error("Firebase auth state error:", err);
+        const badge = document.getElementById("syncBadge");
+        if (badge) {
+          badge.textContent = "⚠️ Sign-in unavailable";
+          badge.title = "Firebase could not restore the sign-in state. Reload the page or check browser storage.";
+        }
+      });
+    });
+  }
+} catch (error) { console.warn("Firebase setup bypassed:", error); }
+
+// ==================== CORE STATE & TEMPLATES ====================
+const STORE='homeWorkoutPlanner_v1';
+const REMINDER_SETTINGS_STORE='homeWorkoutPlanner_reminderSettings_v1';
+let reminderSettings={enabled:true,time:'07:00'};
+try{const saved=JSON.parse(localStorage.getItem(REMINDER_SETTINGS_STORE)||'null');if(saved){reminderSettings={...reminderSettings,...saved}}}catch(error){console.warn('Could not read reminder settings:',error)}
+let pushNotificationsReady=false;
+const defaultStart=new Date(); defaultStart.setHours(12,0,0,0);
+let data={logs:{}, startDate:defaultStart.toISOString().slice(0,10), templates:{}};
+let isCalOpen = false;
+
+// Default Master Templates
+const defaultTemplates = {
+ WARMUP:[
+  ['March in place','60 seconds','Move comfortably and gradually raise your heart rate.','https://www.youtube.com/results?search_query=how+to+march+in+place+warm+up'],
+  ['Arm circles','30 seconds each direction','Make small, controlled circles; gradually make them larger.','https://www.youtube.com/results?search_query=how+to+do+arm+circles+warm+up'],
+  ['Bodyweight squats','10 reps','Use a comfortable range of motion; no dumbbells yet.','https://www.youtube.com/results?search_query=how+to+do+bodyweight+squats'],
+  ['Hip hinges','10 reps','Practise pushing hips back while keeping your back neutral.','https://www.youtube.com/results?search_query=how+to+do+hip+hinges'],
+  ['Easy wall push-ups','8 reps','Warm up shoulders and chest with slow, comfortable reps.','https://www.youtube.com/results?search_query=how+to+do+wall+push+ups']
+ ],
+ A:[
+  ['Dumbbell or bodyweight squats','2 × 10–15 reps','Start without weights if needed; progress to holding one 5 kg dumbbell.','https://www.youtube.com/results?search_query=how+to+do+dumbbell+squats'],
+  ['Incline push-ups','2 × 6–12 reps','Use a sturdy elevated surface and keep your body straight.','https://www.youtube.com/results?search_query=how+to+do+incline+push+ups'],
+  ['One-arm dumbbell rows','2 × 10–15 each side','Use 5 kg if manageable; support yourself on a sturdy chair.','https://www.youtube.com/results?search_query=how+to+do+one+arm+dumbbell+rows'],
+  ['Dumbbell floor press','2 × 10–15 reps','Lie on the floor and lower the weights under control.','https://www.youtube.com/results?search_query=how+to+do+dumbbell+floor+press'],
+  ['Biceps curls','2 × 10–15 reps','Start with 2.5 kg if needed; avoid swinging.','https://www.youtube.com/results?search_query=how+to+do+biceps+curls'],
+  ['Forearm plank','2 × 15–30 seconds','Keep your body straight and breathe normally.','https://www.youtube.com/results?search_query=how+to+do+forearm+plank']
+ ],
+ B:[
+  ['Reverse lunges','2 × 8–10 each leg','Step back and lower only as far as comfortable; hold a wall for balance if needed.','https://www.youtube.com/results?search_query=how+to+do+reverse+lunges'],
+  ['Dumbbell Romanian deadlift','2 × 10–15 reps','Push hips back and keep your back neutral.','https://www.youtube.com/results?search_query=how+to+do+dumbbell+romanian+deadlift'],
+  ['Shoulder press','2 × 8–12 reps','Start with 2.5 kg if needed; avoid arching your lower back.','https://www.youtube.com/results?search_query=how+to+do+dumbbell+shoulder+press'],
+  ['One-arm dumbbell rows','2 × 10–15 each side','Pull toward your hip without twisting your torso.','https://www.youtube.com/results?search_query=how+to+do+one+arm+dumbbell+rows'],
+  ['Dead bug','2 × 8–10 each side','Move slowly and keep your lower back comfortably supported.','https://www.youtube.com/results?search_query=how+to+do+dead+bug+exercise']
+ ],
+ R:[['Easy walk (optional)','15–25 minutes','Keep it comfortable; skip it if you need rest.','']]
+};
+
+try{const old=JSON.parse(localStorage.getItem(STORE)||'null'); if(old) data={...data,...old};}catch(e){}
+if(!data.templates) data.templates = {};
+for(let key in defaultTemplates) {
+  if(!data.templates[key]) data.templates[key] = JSON.parse(JSON.stringify(defaultTemplates[key]));
+}
+
+let shown=new Date();shown.setDate(1);shown.setHours(12,0,0,0);
+let selected=new Date();selected.setHours(12,0,0,0);
+
+// ==================== APP LOGIC ====================
+function iso(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function parseISO(s){const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d,12)}
+
+function save(){
+  localStorage.setItem(STORE,JSON.stringify(data));
+  try { if(currentUser && dbRef) dbRef.set(data); } catch(err) { console.warn("Cloud save failed"); }
+}
+
+function dayWorkout(d){
+  const wd=d.getDay();
+  if(wd===1||wd===3||wd===6){
+    const start=parseISO(data.startDate||iso(d));
+    const week=Math.max(0,Math.floor((d-start)/604800000));
+    let isA=(week%2===0)?(wd===1||wd===6):(wd===3);
+    return {type:isA?'A':'B', name:isA?'Workout A — Full body':'Workout B — Full body', items:data.templates[isA?'A':'B']};
+  }
+  if(wd===4) return {type:'R', name:'Recovery day', items:data.templates.R};
+  return {type:'REST', name:'Rest / study day', items:[]};
+}
+
+function key(){return iso(selected)}
+function logFor(k){if(!data.logs[k])data.logs[k]={ticks:{},complete:false,custom:[]};if(!data.logs[k].ticks)data.logs[k].ticks={};if(!data.logs[k].custom)data.logs[k].custom=[];return data.logs[k]}
+
+document.getElementById('toggleCalBtn').onclick = () => {
+  isCalOpen = !isCalOpen;
+  document.getElementById('calendarWrapper').hidden = !isCalOpen;
+  document.getElementById('toggleCalBtn').textContent = isCalOpen ? '📅 Hide Calendar' : '📅 Show Calendar';
+};
+
+// Date Navigation Buttons
+document.getElementById('prevDateBtn').onclick = () => { selected.setDate(selected.getDate() - 1); shown = new Date(selected.getFullYear(), selected.getMonth(), 1, 12); renderAll(); };
+document.getElementById('nextDateBtn').onclick = () => { selected.setDate(selected.getDate() + 1); shown = new Date(selected.getFullYear(), selected.getMonth(), 1, 12); renderAll(); };
+
+function renderCalendar(){
+ const y=shown.getFullYear(),m=shown.getMonth();document.getElementById('monthTitle').textContent=shown.toLocaleDateString(undefined,{month:'long',year:'numeric'});
+ const first=new Date(y,m,1,12),offset=(first.getDay()+6)%7,last=new Date(y,m+1,0,12).getDate();const root=document.getElementById('calendar');root.innerHTML='';
+ for(let i=0;i<offset;i++){const blank=document.createElement('div');root.appendChild(blank)}
+ const today=iso(new Date());
+ for(let n=1;n<=last;n++){const d=new Date(y,m,n,12),k=iso(d),plan=dayWorkout(d),log=data.logs[k],btn=document.createElement('button');btn.className='day'+(plan.type==='A'||plan.type==='B'?' workout-day':'')+(k===key()?' selected':'')+(k===today?' today':'')+(log&&log.complete?' complete':'');btn.innerHTML='<span class="num">'+n+'</span><span class="dot">'+(log&&log.complete?'✓':(plan.type==='A'?'A':plan.type==='B'?'B':plan.type==='R'?'•':''))+'</span>';btn.setAttribute('aria-label',k+(log&&log.complete?', completed':''));btn.onclick=()=>{selected=d;renderAll()};root.appendChild(btn)}
+}
+
+function renderSession(){
+ const k=key(),p=dayWorkout(selected),log=logFor(k);
+ document.getElementById('selectedDate').textContent=selected.toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+ document.getElementById('sessionLabel').textContent=p.name;
+ document.getElementById('sessionIntro').textContent=(p.type==='A'||p.type==='B')?'Tick off the warm-up steps first, then complete the main workout.':p.type==='R'?'Optional gentle activity only. Recovery is part of training.':'No strength workout planned. Rest or study without guilt.';
+ document.getElementById('restNotice').hidden=!(p.type==='REST'||p.type==='R');
+ const list=document.getElementById('exerciseList');list.innerHTML='';
+ 
+ function addChecklistItem(ex, tickKey, sourceType, itemIdx){
+   const exDiv = document.createElement('div');
+   exDiv.className = 'exercise' + (log.ticks[tickKey] ? ' done' : '');
+   
+   const lbl = document.createElement('label');
+   lbl.style.display = 'flex'; lbl.style.flex = '1'; lbl.style.gap = '11px'; lbl.style.cursor = 'pointer'; lbl.style.minWidth = '200px';
+   
+   const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!log.ticks[tickKey];
+   cb.onchange = () => { log.ticks[tickKey] = cb.checked; save(); renderAll(); };
+   
+   const txt = document.createElement('div');
+   const name = document.createElement('div'); name.className = 'ex-name'; name.textContent = ex[0];
+   const detail = document.createElement('div'); detail.className = 'ex-detail'; detail.textContent = ex[1] + (ex[2] ? ' · ' + ex[2] : '');
+   txt.append(name, detail);
+   
+   if(ex[3]){
+     const vlink = document.createElement('a'); vlink.className = 'video-link'; vlink.href = ex[3]; vlink.target = '_blank'; vlink.innerHTML = '▶ Watch Video';
+     vlink.onclick = (e) => e.stopPropagation(); 
+     txt.appendChild(vlink);
+   }
+   lbl.append(cb, txt);
+   
+   const controls = document.createElement('div');
+   controls.style.display = 'flex'; controls.style.alignItems = 'flex-start';
+   
+   const editBtn = document.createElement('button');
+   editBtn.className = 'icon-btn'; editBtn.innerHTML = '✏️'; editBtn.title = 'Edit Details';
+   
+   const editBox = document.createElement('div');
+   editBox.className = 'edit-box'; 
+   
+   editBtn.onclick = (e) => { e.preventDefault(); editBox.classList.toggle('open'); };
+   
+   const iName = document.createElement('input'); iName.value = ex[0] || ''; iName.placeholder = 'Exercise Name';
+   const iDet = document.createElement('input'); iDet.value = ex[1] || ''; iDet.placeholder = 'Sets, Reps, or Time';
+   const iDesc = document.createElement('input'); iDesc.value = ex[2] || ''; iDesc.placeholder = 'Description / Instructions (optional)';
+   const iVid = document.createElement('input'); iVid.value = ex[3] || ''; iVid.placeholder = 'Video URL (optional)';
+   
+   const btnRow = document.createElement('div'); btnRow.style.display = 'flex'; btnRow.style.gap = '6px'; btnRow.style.marginTop = '2px';
+   const saveBtn = document.createElement('button'); saveBtn.className = 'secondary btn-sm'; saveBtn.textContent = 'Save';
+   saveBtn.onclick = () => {
+      const newEx = [iName.value.trim(), iDet.value.trim(), iDesc.value.trim(), iVid.value.trim()];
+      if(sourceType === 'custom') {
+         log.custom[itemIdx] = {name: newEx[0], detail: newEx[1], desc: newEx[2], video: newEx[3]};
+      } else {
+         data.templates[sourceType][itemIdx] = newEx;
+      }
+      save(); renderAll();
+   };
+   const cancelBtn = document.createElement('button'); cancelBtn.className = 'secondary btn-sm'; cancelBtn.textContent = 'Cancel';
+   cancelBtn.onclick = () => { editBox.classList.remove('open'); };
+   
+   btnRow.append(saveBtn, cancelBtn);
+   editBox.append(iName, iDet, iDesc, iVid, btnRow);
+   controls.append(editBtn);
+   
+   if(sourceType === 'custom'){
+     const delBtn = document.createElement('button');
+     delBtn.className = 'icon-btn del-btn'; delBtn.innerHTML = '🗑️'; delBtn.title = 'Remove';
+     delBtn.onclick = () => { log.custom.splice(itemIdx, 1); delete log.ticks[tickKey]; save(); renderAll(); };
+     controls.append(delBtn);
+   }
+   
+   exDiv.append(lbl, controls, editBox);
+   list.appendChild(exDiv);
+ }
+ 
+ if(p.type==='A'||p.type==='B'){
+   const warmTitle=document.createElement('div');warmTitle.className='session-label';warmTitle.style.margin='8px 0';warmTitle.textContent='WARM-UP · ABOUT 4–5 MINUTES';list.appendChild(warmTitle);
+   data.templates.WARMUP.forEach((ex,i)=>addChecklistItem(ex, 'w'+i, 'WARMUP', i));
+   const mainTitle=document.createElement('div');mainTitle.className='session-label';mainTitle.style.margin='12px 0 4px';mainTitle.textContent='MAIN WORKOUT';list.appendChild(mainTitle);
+ }
+ if(!p.items.length && log.custom.length === 0){
+   const msg=document.createElement('p');msg.className='muted small';msg.textContent='No core workout planned for this date. You can add a custom activity below.';list.appendChild(msg);
+ }
+ 
+ p.items.forEach((ex,i)=>addChecklistItem(ex, i, p.type, i));
+ 
+ if(log.custom.length > 0){
+   const customTitle=document.createElement('div');customTitle.className='session-label';customTitle.style.margin='16px 0 4px';customTitle.textContent='CUSTOM ACTIVITIES';list.appendChild(customTitle);
+   log.custom.forEach((cItem,i)=>addChecklistItem([cItem.name, cItem.detail, cItem.desc || '', cItem.video || ''], 'c'+i, 'custom', i));
+ }
+ 
+ const adder = document.createElement('div');
+ adder.className = 'adder';
+ const cName = document.createElement('input'); cName.className = 'a-name'; cName.placeholder = 'e.g. Cycling';
+ const cDetail = document.createElement('input'); cDetail.className = 'a-det'; cDetail.placeholder = 'e.g. 30 min';
+ const cBtn = document.createElement('button'); cBtn.className = 'secondary'; cBtn.textContent = '+ Add';
+ cBtn.onclick = () => {
+   if(cName.value.trim()){
+     log.custom.push({name: cName.value.trim(), detail: cDetail.value.trim(), desc: '', video: ''});
+     save(); renderAll();
+   }
+ };
+ adder.append(cName, cDetail, cBtn);
+ list.appendChild(adder);
+
+ const total = p.items.length + log.custom.length;
+ let done = 0;
+ p.items.forEach((_,i)=>{if(log.ticks[i]) done++});
+ log.custom.forEach((_,i)=>{if(log.ticks['c'+i]) done++});
+ 
+ document.getElementById('progressText').textContent=done+' / '+total;
+ document.getElementById('progressBar').style.width=(total?done/total*100:0)+'%';
+ document.getElementById('completeBtn').disabled=!total;
+ document.getElementById('completeBtn').textContent=log.complete?'✓ Session completed':'Mark session complete';
+ document.getElementById('completeBtn').style.opacity=total?1:.5;
+} 
+
+function renderAll(){renderCalendar();renderSession();document.getElementById('startDate').value=data.startDate||''}
+function reminderTimeZone(){return Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC'}
+function updateReminderControls(){
+  const timeButton=document.getElementById('reminderTimeBtn');
+  const toggleButton=document.getElementById('reminderToggleBtn');
+  const timeInput=document.getElementById('reminderTimeInput');
+  if(!timeButton||!toggleButton||!timeInput)return;
+  timeInput.value=reminderSettings.time||'07:00';
+  const [hours,minutes]=timeInput.value.split(':').map(Number);
+  const displayTime=new Date(2000,0,1,hours,minutes).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
+  timeButton.textContent='🕖 '+displayTime;
+  toggleButton.setAttribute('aria-pressed',String(!!reminderSettings.enabled));
+  if(!reminderSettings.enabled)toggleButton.textContent='Reminders: Off';
+  else if(!('Notification' in window))toggleButton.textContent='Notifications unavailable';
+  else if(Notification.permission==='denied')toggleButton.textContent='Notifications blocked';
+  else if(!currentUser)toggleButton.textContent='Sign in for reminders';
+  else if(!pushNotificationsReady)toggleButton.textContent='Reminders: On · Set up';
+  else toggleButton.textContent='Reminders: On';
+}
+async function saveReminderSettings(){
+  localStorage.setItem(REMINDER_SETTINGS_STORE,JSON.stringify(reminderSettings));
+  updateReminderControls();
+  if(currentUser&&db){
+    const ref=db.ref('workout_planner_reminder_users/'+currentUser.uid);
+    await ref.update({
+      enabled:!!reminderSettings.enabled,
+      time:reminderSettings.time||'07:00',
+      timeZone:reminderTimeZone(),
+      siteUrl:window.location.origin
+    });
+  }
+}
+async function registerPushNotifications(){
+  if(!currentUser||!db)throw new Error('Sign in with Google before enabling reminders.');
+  if(!('Notification' in window))throw new Error('This browser does not support web notifications.');
+  if(location.protocol!=='https:'&&location.hostname!=='localhost')throw new Error('Push notifications require HTTPS.');
+  if(!messaging)throw new Error('Firebase Messaging is unavailable in this browser.');
+  const registration=await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+  const token=await messaging.getToken({vapidKey:FCM_VAPID_KEY,serviceWorkerRegistration:registration});
+  if(!token)throw new Error('Firebase did not provide a notification token.');
+  await db.ref('workout_planner_reminder_users/'+currentUser.uid+'/tokens/'+token).set(true);
+  pushNotificationsReady=true;
+  if(!foregroundMessageHandlerRegistered){
+    messaging.onMessage(payload=>{
+      const notice=payload.data||{};
+      if(Notification.permission==='granted')new Notification(notice.title||'Workout time',{body:notice.body||'Your daily exercise workout starts now.',icon:'logo.png',data:{url:notice.url||window.location.origin}});
+    });
+    foregroundMessageHandlerRegistered=true;
+  }
+}
+async function loadReminderSettings(user){
+  try{
+    const snapshot=await db.ref('workout_planner_reminder_users/'+user.uid).once('value');
+    const cloudSettings=snapshot.val();
+    if(cloudSettings&&typeof cloudSettings==='object'){
+      if(typeof cloudSettings.enabled==='boolean')reminderSettings.enabled=cloudSettings.enabled;
+      if(/^([01]\d|2[0-3]):[0-5]\d$/.test(cloudSettings.time||''))reminderSettings.time=cloudSettings.time;
+      localStorage.setItem(REMINDER_SETTINGS_STORE,JSON.stringify(reminderSettings));
+    }
+    if(reminderSettings.enabled&&'Notification' in window&&Notification.permission==='granted'){
+      await registerPushNotifications();
+      await saveReminderSettings();
+    }
+  }catch(error){console.warn('Could not load or register cloud reminders:',error)}
+  updateReminderControls();
+}
+document.getElementById('reminderTimeBtn').onclick=()=>{
+  const input=document.getElementById('reminderTimeInput');
+  try{if(typeof input.showPicker==='function')input.showPicker();else input.click()}
+  catch(error){input.click()}
+};
+document.getElementById('reminderTimeInput').onchange=async event=>{
+  const value=event.target.value;
+  if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(value))return;
+  reminderSettings.time=value;
+  try{await saveReminderSettings()}catch(error){console.warn('Could not sync reminder time:',error);alert('The reminder time was saved on this device, but could not be synced to Firebase.')}
+};
+document.getElementById('reminderToggleBtn').onclick=async()=>{
+  try{
+    if(!currentUser){alert('Sign in with Google first to enable cloud reminders.');return}
+    if(reminderSettings.enabled&&(pushNotificationsReady||!('Notification' in window)||Notification.permission==='denied')){
+      reminderSettings.enabled=false;
+      await saveReminderSettings();
+      pushNotificationsReady=false;
+      updateReminderControls();
+      return;
+    }
+    if(!('Notification' in window))throw new Error('This browser does not support web notifications.');
+    if(Notification.permission==='denied')throw new Error('Notifications are blocked in browser settings. Allow them for this site, then try again.');
+    if(Notification.permission!=='granted'){
+      const permission=await Notification.requestPermission();
+      if(permission!=='granted')throw new Error('Notification permission was not granted.');
+    }
+    reminderSettings.enabled=true;
+    await registerPushNotifications();
+    await saveReminderSettings();
+    updateReminderControls();
+  }catch(error){console.warn('Could not enable reminders:',error);alert(error.message||'Could not enable reminders.');updateReminderControls()}
+};
+document.getElementById('todayBtn').onclick=()=>{selected=new Date();selected.setHours(12,0,0,0);shown=new Date(selected.getFullYear(),selected.getMonth(),1,12);renderAll()};
+document.getElementById('completeBtn').onclick=()=>{
+  const p=dayWorkout(selected),log=logFor(key());
+  p.items.forEach((_,i)=>log.ticks[i]=true);
+  log.custom.forEach((_,i)=>log.ticks['c'+i]=true);
+  log.complete=true; save(); renderAll();
+};
+document.getElementById('clearBtn').onclick=()=>{const log=logFor(key());log.ticks={};log.complete=false;save();renderAll()};
+document.getElementById('saveStart').onclick=()=>{const v=document.getElementById('startDate').value;if(v){data.startDate=v;save();renderAll()}};
+document.getElementById('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='home-workout-backup.json';a.click();URL.revokeObjectURL(url)};
+document.getElementById('importBtn').onclick=()=>document.getElementById('importFile').click();
+document.getElementById('importFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const v=JSON.parse(await f.text());if(!v.logs)throw Error('Invalid backup');data=v;save();renderAll();alert('Backup imported successfully.')}catch(err){alert('Could not import that file. Please select a valid planner backup.')}e.target.value=''};
+
+renderAll();
+updateReminderControls();
+</script>
+</body>
+</html>

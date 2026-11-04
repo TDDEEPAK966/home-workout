@@ -1,0 +1,11 @@
+{
+  "name": "home-workout-planner-reminders",
+  "private": true,
+  "version": "1.0.0",
+  "engines": {
+    "node": "22"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.4.0"
+  }
+}
