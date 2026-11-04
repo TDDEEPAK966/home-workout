@@ -404,8 +404,12 @@ function setReminderStatus(message,error=false){
 }
 function reminderSetupError(error){
   const message=error&&error.message?error.message:String(error);
+  const code=error&&error.code?String(error.code):'unknown';
+  const serverResponse=error&&error.customData&&error.customData.serverResponse
+    ?String(error.customData.serverResponse):'';
+  const details=(serverResponse||message).replace(/AIza[0-9A-Za-z_-]{20,}/g,'[redacted API key]').slice(0,600);
   if(/firebaseinstallations\.googleapis\.com|installations\/request-failed|PERMISSION_DENIED/i.test(message)){
-    return 'Firebase Installations rejected the request (403). In Google Cloud Console, enable Firebase Installations API. In APIs & Services → Credentials, edit the Firebase browser API key and, if API restrictions are enabled, allow Firebase Installations API as well as Identity Toolkit API. Save and wait a few minutes, then retry.';
+    return 'Firebase Installations request failed. Check that the API is enabled in the same Google Cloud project as this web app, and that this app’s API key allows it. Firebase error ('+code+'): '+details;
   }
   if(/no active service worker|service worker is not active/i.test(message)){
     return 'The notification service worker is not active yet. Confirm firebase-messaging-sw.js is deployed at the Netlify site root, then reload the site and try again.';
