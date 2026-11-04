@@ -256,7 +256,30 @@ function dayWorkout(d){
 }
 
 function key(){return iso(selected)}
-function logFor(k){if(!data.logs[k])data.logs[k]={ticks:{},complete:false,custom:[]};if(!data.logs[k].ticks)data.logs[k].ticks={};if(!data.logs[k].custom)data.logs[k].custom=[];return data.logs[k]}
+function logFor(k){
+  if(!data.logs[k])data.logs[k]={ticks:{},complete:false,custom:[]};
+  if(!data.logs[k].ticks)data.logs[k].ticks={};
+  if(!data.logs[k].custom)data.logs[k].custom=[];
+  let remindersChanged=false;
+  data.logs[k].custom.forEach(slot=>{
+    if(!slot||typeof slot!=='object')return;
+    if(typeof slot.reminderId!=='string'||!/^[A-Za-z0-9_-]{1,80}$/.test(slot.reminderId)){
+      slot.reminderId=createReminderId();
+      remindersChanged=true;
+    }
+    if(typeof slot.reminderEnabled!=='boolean'){
+      slot.reminderEnabled=true;
+      remindersChanged=true;
+    }
+    if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(slot.reminderTime||'')){
+      slot.reminderTime=/^([01]\d|2[0-3]):[0-5]\d$/.test(reminderSettings.time||'')
+        ?reminderSettings.time:'07:00';
+      remindersChanged=true;
+    }
+  });
+  if(remindersChanged)save();
+  return data.logs[k];
+}
 
 document.getElementById('toggleCalBtn').onclick = () => {
   isCalOpen = !isCalOpen;
@@ -328,7 +351,7 @@ function renderSession(){
    const customItem = sourceType === 'custom' ? log.custom[itemIdx] : null;
    const iReminderEnabled = document.createElement('input');
    iReminderEnabled.type = 'checkbox';
-   iReminderEnabled.checked = !!(customItem && customItem.reminderEnabled === true);
+   iReminderEnabled.checked = !!(customItem && customItem.reminderEnabled !== false);
    const reminderLabel = document.createElement('label');
    reminderLabel.className = 'reminder-option';
    reminderLabel.append(iReminderEnabled, document.createTextNode('Reminder'));
@@ -463,7 +486,12 @@ function setReminderStatus(message,error=false){
 function reminderSetupError(error){
   const message=error&&error.message?error.message:String(error);
   if(/firebaseinstallations\.googleapis\.com|installations\/request-failed|PERMISSION_DENIED/i.test(message)){
-    return 'Firebase Installations rejected the request (403). In Google Cloud Console, enable Firebase Installations API. In APIs & Services → Credentials, edit the Firebase browser API key and, if API restrictions are enabled, allow Firebase Installations API as well as Identity Toolkit API. Save and wait a few minutes, then retry.';
+    const code=error&&error.code?String(error.code):'unknown';
+    const response=error&&error.customData&&error.customData.serverResponse
+      ?String(error.customData.serverResponse):message;
+    const details=response.replace(/AIza[0-9A-Za-z_-]{20,}/g,'[redacted API key]').slice(0,500);
+    return 'Firebase Installations request failed. Firebase error ('+code+'): '+details+
+      ' Check the API-key restrictions and that Firebase Installations API is enabled in the same Google Cloud project.';
   }
   if(/no active service worker|service worker is not active/i.test(message)){
     return 'The notification service worker is not active yet. Confirm firebase-messaging-sw.js is deployed at the Netlify site root, then reload the site and try again.';
