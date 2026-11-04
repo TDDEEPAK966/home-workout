@@ -60,6 +60,7 @@
  
  <div class="actions" style="margin-top:14px;"><button class="secondary" id="todayBtn">Go to today</button><button class="secondary" id="exportBtn">Export backup</button><button class="secondary" id="importBtn">Import backup</button><button class="secondary" id="reminderTimeBtn" type="button" aria-label="Set daily reminder time">🕖 7:00 AM</button><input id="reminderTimeInput" class="reminder-time-input" type="time" value="07:00" tabindex="-1" aria-hidden="true"><button class="secondary" id="reminderToggleBtn" type="button" aria-pressed="true">Enable reminders</button><input id="importFile" type="file" accept="application/json" hidden></div>
  <p class="muted small">Daily workout reminder uses your device's local time. Sign in, enable reminders, and allow browser notifications to receive it when the site is closed.</p>
+ <p id="reminderStatus" class="small" role="status" aria-live="polite" hidden></p>
 </section>
 
 <section class="card">
@@ -117,6 +118,7 @@ let db = null; let dbRef = null; let auth = null; let currentUser = null;
 let authPersistenceReady = Promise.resolve(false);
 let messaging = null;
 let foregroundMessageHandlerRegistered = false;
+let pushSetupInProgress = false;
 const FCM_VAPID_KEY = 'BB2UQ4LeFsl5SQRvwpX2yiEcNgq6xEfwFEMJdlU0ie181CMJnhIpnq5e18j2DoA_im_v2cIecTN_sdLNtxjysAU';
 const firebaseConfig = {
   apiKey: "AIzaSyBDXjoAZMgVu3SoqK913Ub4_qS_kmLVSvQ",
@@ -393,6 +395,26 @@ function renderSession(){
 
 function renderAll(){renderCalendar();renderSession();document.getElementById('startDate').value=data.startDate||''}
 function reminderTimeZone(){return Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC'}
+function setReminderStatus(message,error=false){
+  const status=document.getElementById('reminderStatus');
+  if(!status)return;
+  status.hidden=!message;
+  status.textContent=message;
+  status.className=error?'notice small':'muted small';
+}
+function reminderSetupError(error){
+  const message=error&&error.message?error.message:String(error);
+  if(/firebaseinstallations\.googleapis\.com|installations\/request-failed|PERMISSION_DENIED/i.test(message)){
+    return 'Firebase Installations rejected the request (403). In Google Cloud Console, enable Firebase Installations API. In APIs & Services → Credentials, edit the Firebase browser API key and, if API restrictions are enabled, allow Firebase Installations API as well as Identity Toolkit API. Save and wait a few minutes, then retry.';
+  }
+  if(/no active service worker|service worker is not active/i.test(message)){
+    return 'The notification service worker is not active yet. Confirm firebase-messaging-sw.js is deployed at the Netlify site root, then reload the site and try again.';
+  }
+  if(error&&error.code==='messaging/permission-blocked'){
+    return 'Notifications are blocked for this site. Allow notifications in your browser site settings, reload, and try again.';
+  }
+  return message;
+}
 function updateReminderControls(){
   const timeButton=document.getElementById('reminderTimeBtn');
   const toggleButton=document.getElementById('reminderToggleBtn');
@@ -409,6 +431,7 @@ function updateReminderControls(){
   else if(!currentUser)toggleButton.textContent='Sign in for reminders';
   else if(!pushNotificationsReady)toggleButton.textContent='Reminders: On · Set up';
   else toggleButton.textContent='Reminders: On';
+  toggleButton.disabled=pushSetupInProgress;
 }
 async function saveReminderSettings(){
   localStorage.setItem(REMINDER_SETTINGS_STORE,JSON.stringify(reminderSettings));
@@ -426,17 +449,24 @@ async function saveReminderSettings(){
 async function registerPushNotifications(){
   if(!currentUser||!db)throw new Error('Sign in with Google before enabling reminders.');
   if(!('Notification' in window))throw new Error('This browser does not support web notifications.');
+  if(!('serviceWorker' in navigator))throw new Error('This browser does not support service workers.');
   if(location.protocol!=='https:'&&location.hostname!=='localhost')throw new Error('Push notifications require HTTPS.');
   if(!messaging)throw new Error('Firebase Messaging is unavailable in this browser.');
-  const registration=await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-  const token=await messaging.getToken({vapidKey:FCM_VAPID_KEY,serviceWorkerRegistration:registration});
+  const registration=await navigator.serviceWorker.register('/firebase-messaging-sw.js',{scope:'/',updateViaCache:'none'});
+  const readyRegistration=await navigator.serviceWorker.ready;
+  if(readyRegistration.scope!==registration.scope)throw new Error('The active notification service worker has the wrong site scope. Deploy firebase-messaging-sw.js at the site root.');
+  if(!readyRegistration.active)throw new Error('The notification service worker is not active yet. Reload the page and try again.');
+  const token=await messaging.getToken({vapidKey:FCM_VAPID_KEY,serviceWorkerRegistration:readyRegistration});
   if(!token)throw new Error('Firebase did not provide a notification token.');
   await db.ref('workout_planner_reminder_users/'+currentUser.uid+'/tokens/'+token).set(true);
   pushNotificationsReady=true;
   if(!foregroundMessageHandlerRegistered){
     messaging.onMessage(payload=>{
       const notice=payload.data||{};
-      if(Notification.permission==='granted')new Notification(notice.title||'Workout time',{body:notice.body||'Your daily exercise workout starts now.',icon:'logo.png',data:{url:notice.url||window.location.origin}});
+      if(Notification.permission==='granted'){
+        try{new Notification(notice.title||'Workout time',{body:notice.body||'Your daily exercise workout starts now.',icon:'logo.png',data:{url:notice.url||window.location.origin}})}
+        catch(error){console.warn('Could not display the foreground reminder:',error);setReminderStatus('Push arrived, but this browser could not display it. Check notification permissions.',true)}
+      }
     });
     foregroundMessageHandlerRegistered=true;
   }
@@ -454,7 +484,12 @@ async function loadReminderSettings(user){
       await registerPushNotifications();
       await saveReminderSettings();
     }
-  }catch(error){console.warn('Could not load or register cloud reminders:',error)}
+  }catch(error){
+    console.warn('Could not load or register cloud reminders:',error);
+    if(reminderSettings.enabled&&'Notification' in window&&Notification.permission==='granted'){
+      setReminderStatus(reminderSetupError(error),true);
+    }
+  }
   updateReminderControls();
 }
 document.getElementById('reminderTimeBtn').onclick=()=>{
@@ -469,6 +504,7 @@ document.getElementById('reminderTimeInput').onchange=async event=>{
   try{await saveReminderSettings()}catch(error){console.warn('Could not sync reminder time:',error);alert('The reminder time was saved on this device, but could not be synced to Firebase.')}
 };
 document.getElementById('reminderToggleBtn').onclick=async()=>{
+  if(pushSetupInProgress)return;
   try{
     if(!currentUser){alert('Sign in with Google first to enable cloud reminders.');return}
     if(reminderSettings.enabled&&(pushNotificationsReady||!('Notification' in window)||Notification.permission==='denied')){
@@ -478,6 +514,9 @@ document.getElementById('reminderToggleBtn').onclick=async()=>{
       updateReminderControls();
       return;
     }
+    pushSetupInProgress=true;
+    setReminderStatus('Setting up browser notifications…');
+    updateReminderControls();
     if(!('Notification' in window))throw new Error('This browser does not support web notifications.');
     if(Notification.permission==='denied')throw new Error('Notifications are blocked in browser settings. Allow them for this site, then try again.');
     if(Notification.permission!=='granted'){
@@ -487,8 +526,16 @@ document.getElementById('reminderToggleBtn').onclick=async()=>{
     reminderSettings.enabled=true;
     await registerPushNotifications();
     await saveReminderSettings();
+    setReminderStatus('Daily reminders are enabled on this device.');
     updateReminderControls();
-  }catch(error){console.warn('Could not enable reminders:',error);alert(error.message||'Could not enable reminders.');updateReminderControls()}
+  }catch(error){
+    console.warn('Could not enable reminders:',error);
+    setReminderStatus(reminderSetupError(error),true);
+    alert(reminderSetupError(error));
+  }finally{
+    pushSetupInProgress=false;
+    updateReminderControls();
+  }
 };
 document.getElementById('todayBtn').onclick=()=>{selected=new Date();selected.setHours(12,0,0,0);shown=new Date(selected.getFullYear(),selected.getMonth(),1,12);renderAll()};
 document.getElementById('completeBtn').onclick=()=>{

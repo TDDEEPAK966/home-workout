@@ -14,6 +14,14 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
+self.addEventListener('install', event => {
+  event.waitUntil(self.skipWaiting());
+});
+
+self.addEventListener('activate', event => {
+  event.waitUntil(self.clients.claim());
+});
+
 messaging.onBackgroundMessage(payload => {
   const notice = payload.data || {};
   self.registration.showNotification(notice.title || 'Workout time', {
