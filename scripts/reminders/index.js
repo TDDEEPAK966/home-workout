@@ -22,7 +22,7 @@ function initializeFirebase() {
     throw new Error(`The service-account key must belong to Firebase project ${PROJECT_ID}.`);
   }
 
-  initializeApp({
+  return initializeApp({
     credential: cert(serviceAccount),
     databaseURL: DATABASE_URL
   });
@@ -136,32 +136,36 @@ async function sendDueReminder(userId, settings, now, database, messaging) {
 }
 
 async function main() {
-  initializeFirebase();
-  const database = getDatabase();
-  const messaging = getMessaging();
-  const snapshot = await database.ref(REMINDERS_PATH)
-    .orderByChild('enabled')
-    .equalTo(true)
-    .once('value');
-  if (!snapshot.exists()) {
-    console.log('No enabled workout reminders.');
-    return;
-  }
+  const app = initializeFirebase();
+  try {
+    const database = getDatabase();
+    const messaging = getMessaging();
+    const snapshot = await database.ref(REMINDERS_PATH)
+      .orderByChild('enabled')
+      .equalTo(true)
+      .once('value');
+    if (!snapshot.exists()) {
+      console.log('No enabled workout reminders.');
+      return;
+    }
 
-  const now = new Date();
-  const outcomes = [];
-  snapshot.forEach(userSnapshot => {
-    outcomes.push(
-      sendDueReminder(userSnapshot.key, userSnapshot.val(), now, database, messaging)
-        .catch(error => {
-          console.error(`Failed to send reminder for ${userSnapshot.key}:`, error.message);
-          return error;
-        })
-    );
-  });
-  const results = await Promise.all(outcomes);
-  if (results.some(result => result instanceof Error)) {
-    process.exitCode = 1;
+    const now = new Date();
+    const outcomes = [];
+    snapshot.forEach(userSnapshot => {
+      outcomes.push(
+        sendDueReminder(userSnapshot.key, userSnapshot.val(), now, database, messaging)
+          .catch(error => {
+            console.error(`Failed to send reminder for ${userSnapshot.key}:`, error.message);
+            return error;
+          })
+      );
+    });
+    const results = await Promise.all(outcomes);
+    if (results.some(result => result instanceof Error)) {
+      process.exitCode = 1;
+    }
+  } finally {
+    await app.delete();
   }
 }
 
